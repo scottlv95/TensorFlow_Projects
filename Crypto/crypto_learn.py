@@ -1,12 +1,22 @@
-from json.tool import main
+from gc import callbacks
+from tabnanny import verbose
 import pandas as pd
 import numpy as np
 from sklearn import preprocessing
 from collections import deque
 import random
+import time
+import tensorflow as tf
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense, Dropout, LSTM, BatchNormalization
+from tensorflow.keras.callbacks import TensorBoard, ModelCheckpoint 
+
 SEQ_LEN= 60
 FUTURE_PERIOD_PREDICT= 3
 RATIO_TO_PREDICT= "BTC-USD"
+EPOCHS = 10
+BATCH_SIZE = 64
+NAME = f"{RATIO_TO_PREDICT}{SEQ_LEN}-SEQ-{FUTURE_PERIOD_PREDICT}-PRED-{int(time.time())}"
 
 def preprocess_df(df):
     df = df.drop("future",axis=1)
@@ -57,7 +67,7 @@ def preprocess_df(df):
         X.append(seq)
         y.append(target)
         
-    return np.array(X), y   
+    return np.array(X).astype("float32"), np.array(y)   
 
     
 def classify(current, future):
@@ -106,4 +116,49 @@ main_df = main_df[(main_df.index < last_5pct)]
 train_x , train_y = preprocess_df(main_df)
 validation_x , validation_y = preprocess_df(validation_main_df)
 
-print((validation_y.count(0)),(validation_y.count(1)))
+model = Sequential()
+
+model.add(LSTM(128,input_shape =(train_x.shape[1:]),
+                                 return_sequences=True,
+                                 activation = "tanh"))
+model.add(Dropout(0.2))
+model.add(BatchNormalization())                         
+
+model.add(LSTM(128,input_shape =(train_x.shape[1:]),
+                                 return_sequences=True,
+                                 activation = "tanh"))
+model.add(Dropout(0.2))
+model.add(BatchNormalization())                         
+
+model.add(LSTM(128,input_shape =(train_x.shape[1:]),
+               activation = "tanh"))
+model.add(Dropout(0.2))
+model.add(BatchNormalization())                         
+
+model.add(Dense(32,activation = "tanh"))
+model.add(Dropout(0.2))
+
+model.add(Dense(2,activation="softmax"))
+
+opt = tf.keras.optimizers.Adam(learning_rate=0.001,
+                               decay = 1e-6)
+model.compile(loss='sparse_categorical_crossentropy',
+              optimizer = opt,
+              metrics = ['accuracy'])
+
+tensorboard = TensorBoard(log_dir=f'logs/{NAME}')
+
+checkpoint_filepath = "models/RNN_Final-{epoch:02d}-{val_accuracy:.3f}.hd5"
+checkpoint = ModelCheckpoint(filepath=checkpoint_filepath,
+                             monitor='val_accuracy',
+                             verbose=1,
+                             save_best_only=True,
+                             mode='max')
+
+history = model.fit(
+    train_x, train_y,
+    batch_size = BATCH_SIZE,
+    epochs = EPOCHS,
+    validation_data = (validation_x,validation_y),
+    callbacks =([tensorboard,checkpoint])
+)
