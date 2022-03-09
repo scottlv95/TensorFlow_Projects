@@ -2,10 +2,11 @@ Learning Tensorflow with Crypto
 
 This model predicts whether a specified cryptocurrency will rise or fall base on features of other cryptocurrency.
 
-Below is the list of cryptocurrency I am currently using.
+Below is the list of cryptocurrency I am currently using:
+
 "BTC-USD","LTC-USD","ETH-USD","BCH-USD"
 
-Currently using LSTM layers, as it is a time sensitive data thus using recurrent neural network makes more sense
+Currently using LSTM layers, as it is a time sensitive data thus using recurrent neural network is more suitable here
 (CUDnn version used automatically with "tanh" set as activation function)
 3 layers of LSTM followed by 1 Dense layer and an output layer.
 
